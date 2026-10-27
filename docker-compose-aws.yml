@@ -8,14 +8,5 @@ services:
       # Terraform configuration files
       - ./terraform:/workspace
       # AWS credentials and configuration (read-only)
-      - ../.aws:/root/.aws:ro
+      - ./.aws:/root/.aws:ro
     entrypoint: ["terraform"]
-#    environment:
-#      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-#      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-    networks:
-      - aws-net
-
-networks:
-  aws-net:
-    driver: bridge

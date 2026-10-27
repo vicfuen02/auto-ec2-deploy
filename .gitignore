@@ -33,3 +33,5 @@ build/
 .vscode/
 
 .aws
+.tfstate
+.terraform/
