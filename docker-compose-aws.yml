@@ -1,0 +1,21 @@
+
+services:
+  terraform:
+    image: hashicorp/terraform:1.16.7
+    container_name: terraform
+    working_dir: /workspace
+    volumes:
+      # Terraform configuration files
+      - ../src/main/java/es/interview_prep/tech/aws/infrastructure:/workspace
+      # AWS credentials and configuration (read-only)
+      - ../.aws:/root/.aws:ro
+    entrypoint: ["terraform"]
+#    environment:
+#      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+#      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    networks:
+      - aws-net
+
+networks:
+  aws-net:
+    driver: bridge
