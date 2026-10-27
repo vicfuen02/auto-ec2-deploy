@@ -6,7 +6,7 @@ services:
     working_dir: /workspace
     volumes:
       # Terraform configuration files
-      - ../src/main/java/es/interview_prep/tech/aws/infrastructure:/workspace
+      - ./terraform:/workspace
       # AWS credentials and configuration (read-only)
       - ../.aws:/root/.aws:ro
     entrypoint: ["terraform"]
