@@ -17,6 +17,25 @@ env:
   AWS_REGION: eu-south-2
 
 jobs:
+  console:
+    # Reports which switches are off so skipped jobs are explained in the run log.
+    if: vars.ENABLE_PIPELINE != 'true' || vars.ENABLE_RUN_TERRAFORM != 'true' || vars.DEPLOY_TO_EC2 != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report disabled switches
+        run: |
+          if [ "${{ vars.ENABLE_PIPELINE }}" != "true" ]; then
+            echo "::warning title=Pipeline disabled::ENABLE_PIPELINE is not 'true'. Terraform, build and deploy are all skipped."
+          else
+            if [ "${{ vars.ENABLE_RUN_TERRAFORM }}" != "true" ]; then
+              echo "::notice title=Terraform skipped::ENABLE_RUN_TERRAFORM is not 'true'."
+            fi
+            if [ "${{ vars.DEPLOY_TO_EC2 }}" != "true" ]; then
+              echo "::notice title=EC2 deploy skipped::DEPLOY_TO_EC2 is not 'true'."
+            fi
+          fi
+          echo "ENABLE_PIPELINE=${{ vars.ENABLE_PIPELINE }} ENABLE_RUN_TERRAFORM=${{ vars.ENABLE_RUN_TERRAFORM }} DEPLOY_TO_EC2=${{ vars.DEPLOY_TO_EC2 }}"
+
   terraform:
     # Master switch: set repository variable ENABLE_PIPELINE=true to enable.
     if: vars.ENABLE_PIPELINE == 'true' && vars.ENABLE_RUN_TERRAFORM == 'true'
