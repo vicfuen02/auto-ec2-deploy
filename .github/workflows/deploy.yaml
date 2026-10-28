@@ -19,7 +19,7 @@ env:
 jobs:
   terraform:
     # Master switch: set repository variable ENABLE_PIPELINE=true to enable.
-    if: vars.ENABLE_PIPELINE == 'true' && var.ENABLE_RUN_TERRAFORM == 'true'
+    if: vars.ENABLE_PIPELINE == 'true' && vars.ENABLE_RUN_TERRAFORM == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -54,7 +54,8 @@ jobs:
         run: terraform apply -input=false -auto-approve tfplan
 
   build:
-    if: vars.ENABLE_PIPELINE == 'true'
+    # Run when terraform succeeded or was skipped (ENABLE_RUN_TERRAFORM off).
+    if: ${{ !cancelled() && vars.ENABLE_PIPELINE == 'true' && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') }}
     needs: terraform
     runs-on: ubuntu-latest
     steps:
