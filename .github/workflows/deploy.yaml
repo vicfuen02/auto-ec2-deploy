@@ -1,0 +1,91 @@
+name: Infra + Build + Deploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: auto-ec2-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-south-2
+
+jobs:
+  terraform:
+    # Master switch: set repository variable ENABLE_PIPELINE=true to enable.
+    if: vars.ENABLE_PIPELINE == 'true' && var.ENABLE_RUN_TERRAFORM == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v6
+
+      # Install Terraform
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.10.5
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=auto-ec2-deploy/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="use_lockfile=true"
+
+      - run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve tfplan
+
+  build:
+    if: vars.ENABLE_PIPELINE == 'true'
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Compile and test
+        run: ./mvnw -B -ntp verify
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+          if-no-files-found: error
+
+  deploy:
+    # Second switch: set repository variable DEPLOY_TO_EC2=true to deploy (off by default).
+    if: vars.ENABLE_PIPELINE == 'true' && vars.DEPLOY_TO_EC2 == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+
+      - name: Deploy to EC2
+        run: |
+          echo "EC2 deployment not implemented yet."
+          ls -l *.jar
