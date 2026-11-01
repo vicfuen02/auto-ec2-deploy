@@ -7,6 +7,9 @@ services:
     volumes:
       # Terraform configuration files
       - ./terraform:/workspace
-      # AWS credentials and configuration (read-only)
-      - ./.aws:/root/.aws:ro
-    entrypoint: ["terraform"]
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    entrypoint: ["sh", "-c", "while true; do sleep 3600; done"]
+    tty: true
+    stdin_open: true

@@ -1,5 +1,79 @@
 # auto-ec2-deploy
 
+## Docker setup
+
+Running docker and executing terraform in container
+   ```
+   docker compose -f ./docker-compose-aws.yml up
+   docker exec -it terraform sh
+   terraform init \
+      -backend-config="bucket=bucket_name" \
+       -backend-config="key=bucket_key" \
+       -backend-config="region=bucket_region"
+   ```
+
+Policy for aws IAM User using terraform to access S3 bucket for terraform state file
+   ```
+   {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "TerraformStateBucketAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketVersioning"
+            ],
+            "Resource": "arn:s3:bucket"
+        },
+        {
+            "Sid": "TerraformStateObjectAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": "arn:s3:bucket/*"
+        }
+    ]
+}
+   ```
+
+Policy for aws IAM User using terraform to create ec2 terraform test resource ssm
+   ```
+   {
+    "Version": "2012-10-17",
+    "Statement": [
+           {
+               "Sid": "ssmAccess1",
+               "Effect": "Allow",
+               "Action": [
+                   "ssm:PutParameter",
+                   "ssm:GetParameter"
+               ],
+               "Resource": [
+                   "arn:aws:ssm:user/smoke-test"
+               ]
+           },
+           {
+               "Sid": "SsmAccess2",
+               "Effect": "Allow",
+               "Action": [
+                   "ssm:DescribeParameters"
+               ],
+               "Resource": [
+                   "arn:aws:ssm:user:*"
+               ]
+           }
+       ]
+   }
+   
+   ```
+
+
+
+
 ## CI/CD setup
 
 The workflow `.github/workflows/deploy.yaml` runs on every push to `develop`: Terraform plan/apply, then Maven build. EC2 deploy is a placeholder.
@@ -38,3 +112,5 @@ Settings → Secrets and variables → Actions → **Variables** → *Repository
 | `TF_STATE_BUCKET` | Name of the S3 state bucket |
 
 No AWS secrets are needed.
+
+
