@@ -1,0 +1,120 @@
+name: Infra + Build + Deploy
+
+on:
+  push:
+    branches: [develop,main]
+  workflow_dispatch:
+
+concurrency:
+  group: auto-ec2-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+
+jobs:
+  console:
+    # Reports which switches are off so skipped jobs are explained in the run log.
+    if: vars.ENABLE_PIPELINE != 'true' || vars.ENABLE_RUN_TERRAFORM != 'true' || vars.DEPLOY_TO_EC2 != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report disabled switches
+        run: |
+          if [ "${{ vars.ENABLE_PIPELINE }}" != "true" ]; then
+            echo "::warning title=Pipeline disabled::ENABLE_PIPELINE is not 'true'. Terraform, build and deploy are all skipped."
+          else
+            if [ "${{ vars.ENABLE_RUN_TERRAFORM }}" != "true" ]; then
+              echo "::notice title=Terraform skipped::ENABLE_RUN_TERRAFORM is not 'true'."
+            fi
+            if [ "${{ vars.DEPLOY_TO_EC2 }}" != "true" ]; then
+              echo "::notice title=EC2 deploy skipped::DEPLOY_TO_EC2 is not 'true'."
+            fi
+          fi
+          echo "ENABLE_PIPELINE=${{ vars.ENABLE_PIPELINE }} ENABLE_RUN_TERRAFORM=${{ vars.ENABLE_RUN_TERRAFORM }} DEPLOY_TO_EC2=${{ vars.DEPLOY_TO_EC2 }}"
+
+  terraform:
+    # Master switch: set repository variable ENABLE_PIPELINE=true to enable.
+    if: vars.ENABLE_PIPELINE == 'true' && vars.ENABLE_RUN_TERRAFORM == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v6
+
+      # Install Terraform
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.10.5
+      # Using OIDC with AWS role
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: vars.AWS_AUTH_METHOD == 'oidc'
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+     # Using AWS credentials
+      - name: Configure AWS credentials
+        if: vars.AWS_AUTH_METHOD == 'credentials'
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ vars.AWS_REGION }}
+
+
+      - name: Terraform init
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=auto-ec2-deploy/terraform/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="use_lockfile=true"
+
+      - run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve tfplan
+
+  build:
+    # Run when terraform succeeded or was skipped (ENABLE_RUN_TERRAFORM off).
+    if: ${{  vars.ENABLE_PIPELINE == 'true' && vars.DEPLOY_TO_EC2 == 'true' && !cancelled() && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') }}
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Compile and test
+        run: ./mvnw -B -ntp verify
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+          if-no-files-found: error
+
+  deploy:
+    # Second switch: set repository variable DEPLOY_TO_EC2=true to deploy (off by default).
+    if: vars.ENABLE_PIPELINE == 'true' && vars.DEPLOY_TO_EC2 == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+
+      - name: Deploy to EC2
+        run: |
+          echo "EC2 deployment not implemented yet."
+          ls -l *.jar
