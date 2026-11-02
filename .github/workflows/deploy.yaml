@@ -48,14 +48,16 @@ jobs:
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.10.5
-#      # Using OIDC with AWS role
-#      - uses: aws-actions/configure-aws-credentials@v4
-#        with:
-#          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-#          aws-region: ${{ vars.AWS_REGION }}
+      # Using OIDC with AWS role
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: vars.AWS_AUTH_METHOD == 'oidc'
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
      # Using AWS credentials
       - name: Configure AWS credentials
+        if: vars.AWS_AUTH_METHOD == 'credentials'
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}

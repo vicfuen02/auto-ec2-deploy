@@ -82,9 +82,8 @@ Policy for aws IAM User using terraform to create ec2 terraform test resource ss
 
 The workflow `.github/workflows/deploy.yaml` runs on every push to `develop`: Terraform plan/apply, then Maven build. EC2 deploy is a placeholder.
 
-### OIDC
 
-#### 1. AWS
+### 1. OIDC AWS
 
 1. **OIDC provider** (IAM → Identity providers): URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`.
 2. **IAM role** with this trust policy (replace `<ACCOUNT_ID>`):
@@ -110,16 +109,20 @@ The workflow `.github/workflows/deploy.yaml` runs on every push to `develop`: Te
 
 ### 2. GitHub
 
-Settings → Secrets and variables → Actions → **Variables** → *Repository variables*:
+Settings → Secrets and variables → Actions → **Variables**/**Secrets** → *Repository variables*:
 
-| Variable | Value |
-|---|---|
-| `ENABLE_PIPELINE` | `true` to enable the whole pipeline (anything else disables it) |
-| `ENABLE_RUN_TERRAFORM` | `true` to enable the Terraform job (off by default) |
-| `DEPLOY_TO_EC2` | `true` to enable the deploy job (off by default) |
-| `AWS_ROLE_ARN` | ARN of the IAM role above |
-| `TF_STATE_BUCKET` | Name of the S3 state bucket |
+| Variable                | Value                                                           |
+|-------------------------|-----------------------------------------------------------------|
+| `ENABLE_PIPELINE`       | `true` to enable the whole pipeline (anything else disables it) |
+| `ENABLE_RUN_TERRAFORM`  | `true` to enable the Terraform job (off by default)             |
+| `DEPLOY_TO_EC2`         | `true` to enable the deploy job (off by default)                |
+| `AWS_AUTH_METHOD`       | AWS Auth method, values = ('credentials' \| 'oidc')             |
+| `AWS_ROLE_ARN`          | ARN of the IAM role above (AWS_AUTH_METHOD= oidc)               |
+| `AWS_REGION`            | AWS Region for S3 terraform bucket                              |
+| `AWS_ACCESS_KEY_ID`     | Access key for Github Actions (AWS_AUTH_METHOD= credentials)    |
+| `AWS_SECRET_ACCESS_KEY` | ARN of the IAM role above (AWS_AUTH_METHOD= credentials)        |
+| `TF_STATE_BUCKET`       | Name of the S3 state bucket                                     |
 
-No AWS secrets are needed.
+
 
 
