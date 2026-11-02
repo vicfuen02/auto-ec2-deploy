@@ -50,17 +50,26 @@ jobs:
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.10.5
+#      # Using OIDC with AWS role
+#      - uses: aws-actions/configure-aws-credentials@v4
+#        with:
+#          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+#          aws-region: ${{ env.AWS_REGION }}
 
-      - uses: aws-actions/configure-aws-credentials@v4
+     # Using AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ${{ vars.AWS_REGION }}
+
 
       - name: Terraform init
         run: |
           terraform init -input=false \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
-            -backend-config="key=auto-ec2-deploy/terraform.tfstate" \
+            -backend-config="key=auto-ec2-deploy/terraform/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="use_lockfile=true"
 
@@ -74,11 +83,11 @@ jobs:
 
   build:
     # Run when terraform succeeded or was skipped (ENABLE_RUN_TERRAFORM off).
-    if: ${{ !cancelled() && vars.ENABLE_PIPELINE == 'true' && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') }}
+    if: ${{  vars.ENABLE_PIPELINE == 'true' && vars.DEPLOY_TO_EC2 == 'true' && !cancelled() && (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') }}
     needs: terraform
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-java@v4
         with:

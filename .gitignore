@@ -36,3 +36,13 @@ build/
 .aws
 .tfstate
 .terraform/
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Terraform variable files
+*.tfvars
+*.tfvars.json

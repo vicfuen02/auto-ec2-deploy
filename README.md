@@ -50,10 +50,14 @@ Policy for aws IAM User using terraform to create ec2 terraform test resource ss
                "Effect": "Allow",
                "Action": [
                    "ssm:PutParameter",
-                   "ssm:GetParameter"
+                   "ssm:GetParameter",
+                   "ssm:ListTagsForResource",
+                   "ssm:AddTagsToResource",
+                   "ssm:RemoveTagsFromResource",
+                   "ssm:DeleteParameter"
                ],
                "Resource": [
-                   "arn:aws:ssm:user/smoke-test"
+                   "arn:aws:ssm:eu-north-1:<ACCOUNT_ID>:parameter/auto-ec2-deploy-test/smoke-test"
                ]
            },
            {
@@ -63,7 +67,7 @@ Policy for aws IAM User using terraform to create ec2 terraform test resource ss
                    "ssm:DescribeParameters"
                ],
                "Resource": [
-                   "arn:aws:ssm:user:*"
+                   "arn:aws:ssm:eu-north-1:<ACCOUNT_ID>:*"
                ]
            }
        ]
@@ -78,7 +82,9 @@ Policy for aws IAM User using terraform to create ec2 terraform test resource ss
 
 The workflow `.github/workflows/deploy.yaml` runs on every push to `develop`: Terraform plan/apply, then Maven build. EC2 deploy is a placeholder.
 
-### 1. AWS
+### OIDC
+
+#### 1. AWS
 
 1. **OIDC provider** (IAM → Identity providers): URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`.
 2. **IAM role** with this trust policy (replace `<ACCOUNT_ID>`):
@@ -98,6 +104,9 @@ The workflow `.github/workflows/deploy.yaml` runs on every push to `develop`: Te
    ```
 3. **Role permissions**: SSM parameter access (`ssm:*Parameter*`, `ssm:AddTagsToResource`, `ssm:ListTagsForResource`) and read/write on the state bucket.
 4. **S3 bucket** (created manually, once) to store the Terraform state.
+
+
+
 
 ### 2. GitHub
 
