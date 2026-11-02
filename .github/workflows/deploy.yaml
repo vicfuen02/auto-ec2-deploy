@@ -2,7 +2,7 @@ name: Infra + Build + Deploy
 
 on:
   push:
-    branches: [develop]
+    branches: [develop,main]
   workflow_dispatch:
 
 concurrency:
