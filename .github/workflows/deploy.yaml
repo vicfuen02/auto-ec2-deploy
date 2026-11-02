@@ -13,8 +13,6 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: eu-south-2
 
 jobs:
   console:
@@ -54,7 +52,7 @@ jobs:
 #      - uses: aws-actions/configure-aws-credentials@v4
 #        with:
 #          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-#          aws-region: ${{ env.AWS_REGION }}
+#          aws-region: ${{ vars.AWS_REGION }}
 
      # Using AWS credentials
       - name: Configure AWS credentials
