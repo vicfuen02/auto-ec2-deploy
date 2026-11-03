@@ -42,16 +42,19 @@ resource "aws_security_group" "alb" {
     cidr_blocks = [var.allowed_cidr]
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "${var.project_name}-alb-sg"
   }
+}
+
+# Separate rule resource avoids a dependency cycle between the two groups
+resource "aws_vpc_security_group_egress_rule" "alb_to_ec2" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Application traffic to EC2"
+  from_port                    = var.app_port
+  to_port                      = var.app_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.ec2.id
 }
 
 # Private security group: EC2
@@ -69,9 +72,18 @@ resource "aws_security_group" "ec2" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTPS (S3, SSM, package repos)"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "HTTP (package repos)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
