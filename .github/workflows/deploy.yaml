@@ -41,6 +41,8 @@ jobs:
     defaults:
       run:
         working-directory: terraform
+    env:
+      TF_VAR_allowed_cidr: $ {{ vars.ALLOWED_CIDR }}
     steps:
       - uses: actions/checkout@v6
 

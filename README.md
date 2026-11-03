@@ -10,6 +10,7 @@ Running docker and executing terraform in container
       -backend-config="bucket=bucket_name" \
        -backend-config="key=bucket_key" \
        -backend-config="region=bucket_region"
+   terraform apply -var="allowed_cidr=CIDR_IP"
    ```
 
 Policy for aws IAM User using terraform to access S3 bucket for terraform state file
@@ -116,6 +117,7 @@ Settings → Secrets and variables → Actions → **Variables**/**Secrets** →
 | `ENABLE_PIPELINE`       | `true` to enable the whole pipeline (anything else disables it) |
 | `ENABLE_RUN_TERRAFORM`  | `true` to enable the Terraform job (off by default)             |
 | `DEPLOY_TO_EC2`         | `true` to enable the deploy job (off by default)                |
+| `ALLOWED_CIDR`         | Allowed IPs to access load balancer                             |
 | `AWS_AUTH_METHOD`       | AWS Auth method, values = ('credentials' \| 'oidc')             |
 | `AWS_ROLE_ARN`          | ARN of the IAM role above (AWS_AUTH_METHOD= oidc)               |
 | `AWS_REGION`            | AWS Region for S3 terraform bucket                              |
