@@ -89,11 +89,21 @@ resource "aws_launch_template" "app" {
   image_id      = data.aws_ssm_parameter.al2023_ami.value
   instance_type = var.instance_type
 
-  # Instances do not receive public IP addresses
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2.name
+  }
+
+  # Default VPC subnets have no NAT: a public IP is needed for outbound access
+  # (dnf, S3). Inbound is still restricted to the ALB by the security group.
   network_interfaces {
-    associate_public_ip_address = false
+    associate_public_ip_address = true
     security_groups             = [aws_security_group.ec2.id]
   }
+
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    artifacts_bucket = aws_s3_bucket.artifacts.bucket
+    app_port         = var.app_port
+  }))
 
   tag_specifications {
     resource_type = "instance"
@@ -138,7 +148,7 @@ resource "aws_lb_target_group" "app" {
 
   health_check {
     enabled             = true
-    path                = "/health"
+    path                = "/"
     protocol            = "HTTP"
     matcher             = "200"
     interval            = 30

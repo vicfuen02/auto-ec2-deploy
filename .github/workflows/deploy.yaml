@@ -109,12 +109,55 @@ jobs:
     if: vars.ENABLE_PIPELINE == 'true' && vars.DEPLOY_TO_EC2 == 'true'
     needs: build
     runs-on: ubuntu-latest
+    env:
+      PROJECT_NAME: auto-ec2-deploy-test
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: app-jar
 
-      - name: Deploy to EC2
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: vars.AWS_AUTH_METHOD == 'oidc'
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: aws-actions/configure-aws-credentials@v6.3.0
+        if: vars.AWS_AUTH_METHOD == 'credentials'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload jar to S3
         run: |
-          echo "EC2 deployment not implemented yet."
-          ls -l *.jar
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          JAR=$(ls *.jar | grep -v '\.original$' | head -n1)
+          aws s3 cp "$JAR" "s3://${PROJECT_NAME}-artifacts-${ACCOUNT_ID}/app/app.jar"
+
+      - name: Roll out new version (ASG instance refresh)
+        run: |
+          ASG="${PROJECT_NAME}-asg"
+          # Wait for any refresh in progress (e.g. from a previous run)
+          while aws autoscaling describe-instance-refreshes --auto-scaling-group-name "$ASG" \
+            --query 'InstanceRefreshes[?Status==`Pending` || Status==`InProgress`] | length(@)' --output text | grep -qv '^0$'; do
+            sleep 15
+          done
+          ID=$(aws autoscaling start-instance-refresh --auto-scaling-group-name "$ASG" \
+            --preferences '{"MinHealthyPercentage":50,"InstanceWarmup":120}' \
+            --query InstanceRefreshId --output text)
+          while true; do
+            STATUS=$(aws autoscaling describe-instance-refreshes --auto-scaling-group-name "$ASG" \
+              --instance-refresh-ids "$ID" --query 'InstanceRefreshes[0].Status' --output text)
+            echo "Instance refresh: $STATUS"
+            case "$STATUS" in
+              Successful) break ;;
+              Failed|Cancelled|Cancelling|RollbackSuccessful|RollbackFailed) exit 1 ;;
+            esac
+            sleep 30
+          done
+
+      - name: Show URL
+        run: |
+          aws elbv2 describe-load-balancers --names "${PROJECT_NAME}-alb" \
+            --query 'LoadBalancers[0].DNSName' --output text | sed 's#^#http://#'
