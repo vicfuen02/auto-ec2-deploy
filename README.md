@@ -1,5 +1,11 @@
 # auto-ec2-deploy
 
+A Spring Boot application with an automated deployment pipeline: on every push, GitHub Actions provisions AWS infrastructure with Terraform, builds the app with Maven, and deploys it to an EC2 instance with ASG and ALB.
+
+
+![auto-ec2-deploy](images/auto-ec2-deploy.png)
+
+
 ## Docker setup
 
 Running docker and executing terraform in container
