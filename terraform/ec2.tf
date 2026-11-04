@@ -48,6 +48,17 @@ resource "aws_security_group" "alb" {
 }
 
 # Separate rule resource avoids a dependency cycle between the two groups
+resource "aws_vpc_security_group_egress_rule" "ec2_toalb" {
+  security_group_id            = aws_security_group.ec2.id
+  description                  = "Application traffic to EC2"
+  from_port                    = var.app_port
+  to_port                      = var.app_port
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.alb.id
+}
+
+
+# Separate rule resource avoids a dependency cycle between the two groups
 resource "aws_vpc_security_group_egress_rule" "alb_to_ec2" {
   security_group_id            = aws_security_group.alb.id
   description                  = "Application traffic to EC2"
@@ -70,6 +81,13 @@ resource "aws_security_group" "ec2" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
+  ingress {
+    description     = "Application traffic from SSH"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    cidr_blocks = [var.allowed_cidr]
+  }
 
   egress {
     description = "HTTPS (S3, SSM, package repos)"
@@ -91,15 +109,21 @@ resource "aws_security_group" "ec2" {
     Name = "${var.project_name}-ec2-sg"
   }
 }
-
 # --------------------------------------------------
 # EC2 LAUNCH TEMPLATE
 # --------------------------------------------------
+
+
+resource "aws_key_pair" "app" {
+  key_name   = "${var.project_name}-key"
+  public_key = var.ssh_public_key
+}
 
 resource "aws_launch_template" "app" {
   name_prefix   = "${var.project_name}-"
   image_id      = data.aws_ssm_parameter.al2023_ami.value
   instance_type = var.instance_type
+  key_name      = aws_key_pair.app.key_name
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2.name
