@@ -178,7 +178,9 @@ Policy for AWS IAM User using terraform to create ec2 infra
                    "autoscaling:DescribeScalingActivities",
                    "autoscaling:DescribeTags",
                    "autoscaling:CreateOrUpdateTags",
-                   "autoscaling:DeleteTags"
+                   "autoscaling:DeleteTags",
+                   "autoscaling:DescribeInstanceRefreshes",
+                   "autoscaling:StartInstanceRefresh"
                ],
                "Resource": "*"
            },
@@ -213,6 +215,7 @@ Policy for AWS IAM User using terraform to create s3 bucket for .jar
                    "s3:DeleteBucket",
                    "s3:DeleteObject",
                    "s3:ListBucket",
+                   "s3:PutObject",
                    "s3:GetBucketLocation",
                    "s3:GetBucketPolicy",
                    "s3:GetBucketPublicAccessBlock",

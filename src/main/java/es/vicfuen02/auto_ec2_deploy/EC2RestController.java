@@ -10,7 +10,7 @@ public class EC2RestController {
 
     @RequestMapping
     public String echo() {
-        return "Hi this is a sb app GitHub";
+        return "Hi this is a sb app GitHub2";
     }
 
 }
