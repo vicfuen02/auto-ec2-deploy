@@ -108,6 +108,7 @@ jobs:
       - name: Compile and test
         run: |
           echo "Running mvn verify.."
+          chmod +x mvnw
           ./mvnw -B -ntp verify
 
       - uses: actions/upload-artifact@v4
